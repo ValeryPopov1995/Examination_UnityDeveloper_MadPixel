@@ -1,9 +1,9 @@
-using DG.Tweening;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using UnityEngine;
+using UnityEngine.UI;
 using Zenject;
 using Random = UnityEngine.Random;
 
@@ -12,37 +12,80 @@ namespace ValeryPopov.RoulettePrototype
     public class Roulette : MonoBehaviour
     {
         public RouletteItem LastItem { get; private set; }
-        [SerializeField] private int _playCost = 1;
-        [SerializeField] private int _fadeRotationCircles = 5;
+        public bool CanPlay { get; private set; }
+        public bool IsPlaing { get; private set; }
+
+        [field: SerializeField] public int PlayCost { get; private set; } = 1;
         [SerializeField] private Transform _circle;
+        [SerializeField] private Transform _iconsParent;
+        [SerializeField] private Image _iconPrefab; // TODO addressables
+        [SerializeField] private int _iconPointRadius = 90;
+        [SerializeField] private int _minRotations = 5;
+        [SerializeField] private int _duration = 5;
+        [SerializeField] private AnimationCurve _rotationSpeed01;
         [Inject] private Player _player;
         private IEnumerable<RouletteItem> _items;
-        private float _circleRotationDuration = 1;
 
-        internal void SetItems(IEnumerable<RouletteItem> items)
+        internal bool SetItems(IEnumerable<RouletteItem> items)
         {
-            _circle.localRotation = Quaternion.identity;
+            if (IsPlaing) return false;
 
             _items = items
                 .Where(i => i != null);
 
-            if (!_items.Any())
-                throw new Exception("Have no items to play");
+            if (!_items.Any()) return false;
+
+            if (_iconsParent.childCount > 0)
+            {
+                var icons = new Transform[_iconsParent.childCount];
+                for (int i = 0; i < _iconsParent.childCount; i++)
+                    icons[i] = _iconsParent.GetChild(i);
+                for (int i = 0; i < _iconsParent.childCount; i++)
+                    Destroy(icons[i].gameObject);
+            }
+
+            float angleStep = 360f / _items.Count();
+            for (int i = 0; i < _items.Count(); i++)
+            {
+                float angle = i * angleStep;
+                float radians = angle * Mathf.Deg2Rad;
+                float x = _iconPointRadius * Mathf.Cos(radians);
+                float y = _iconPointRadius * Mathf.Sin(radians);
+
+                var icon = Instantiate(_iconPrefab, _iconsParent);
+                icon.sprite = _items.ElementAt(i).Icon;
+                icon.transform.localPosition = new Vector3(x, y, 0);
+                icon.transform.localRotation = Quaternion.Euler(0, 0, angle);
+            }
+
+            CanPlay = true;
+            return true;
         }
 
         internal async Task<bool> Play()
         {
-            if (_player.Mana.Value <= _playCost)
+            if (!CanPlay || IsPlaing) return false;
+            if (_player.Mana.Value < PlayCost) return false;
+
+            IsPlaing = true;
+            _player.Mana.Remove(PlayCost);
+            int target = GetItemIndexByChance(_items);
+            float startAngle = _circle.localEulerAngles.z;
+            float targetAngle = 360f * target / _items.Count();
+            Debug.Log(targetAngle);
+            float rotationAngle = 360 * _minRotations - targetAngle;
+
+            float progress = 0;
+            while (progress < 1 && !destroyCancellationToken.IsCancellationRequested)
             {
-                // TODO play locked audio
-                return false;
+                float z = Mathf.Lerp(startAngle, rotationAngle, _rotationSpeed01.Evaluate(progress));
+                _circle.localEulerAngles = new(0, 0, z);
+                progress += Time.deltaTime / _duration;
+                await Task.Yield();
             }
 
-            _player.Mana.Remove(_playCost);
-            var target = GetItemIndexByChance(_items);
-            float targetAngle = 360 * _items.Count() / target;
-            await _circle.DOLocalRotate(new(0, 0, targetAngle + 360 * 5), 5).AsyncWaitForCompletion();
             LastItem = _items.ElementAt(target);
+            IsPlaing = false;
             return true;
         }
 

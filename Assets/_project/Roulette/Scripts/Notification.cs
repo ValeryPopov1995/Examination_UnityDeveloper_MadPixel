@@ -28,6 +28,8 @@ namespace ValeryPopov.RoulettePrototype
 
             transform.DOLocalMove(_showPosition, _moveDuration);
             await Task.Delay(TimeSpan.FromSeconds(_showDuration));
+
+            if (destroyCancellationToken.IsCancellationRequested) return;
             transform.DOLocalMove(_startPosition, _moveDuration);
 
             // TODO play audio

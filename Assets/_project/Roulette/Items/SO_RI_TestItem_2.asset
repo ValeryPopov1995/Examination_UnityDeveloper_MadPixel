@@ -12,7 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7a95924a5b0afe34d939fd65b9ce23be, type: 3}
   m_Name: SO_RI_TestItem_2
   m_EditorClassIdentifier: 
-  <Title>k__BackingField: test title
+  <Title>k__BackingField: test title 2
   <Discription>k__BackingField: test description
-  <Icon>k__BackingField: {fileID: 0}
+  <Icon>k__BackingField: {fileID: 21300000, guid: b889ef0124f73fa4298de5e962dac98b,
+    type: 3}
   <Chance>k__BackingField: 150

@@ -11,7 +11,7 @@ namespace ValeryPopov.RoulettePrototype
 
         private async void OnEnable()
         {
-            while (enabled)
+            while (!destroyCancellationToken.IsCancellationRequested)
             {
                 Mana.Add();
                 await Task.Delay(TimeSpan.FromSeconds(_regenerationDelay));
